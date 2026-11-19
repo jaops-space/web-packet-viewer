@@ -9,12 +9,11 @@ display filter, parameters, structure and hex dump.
 
 | directory | what |
 |---|---|
-| `core/` | `pv-core`: the viewer in Rust (file formats, preprocessors, naming, filter, details), tested against the Java viewer |
+| `core/` | `pv-core`: the viewer in Rust (file formats, preprocessors, naming, filter, details) |
 | `wasm/` | `pv-wasm`: the WebAssembly module, its worker and the JavaScript client ([docs/protocol.md](docs/protocol.md)) |
 | `web/` | the Yamcs-web extension (Angular) |
 | `plugin/` | the Yamcs plugin `com.jaops.yamcs:web-packet-viewer`: serves the UI, the configuration and the MDB ([docs/plugin.md](docs/plugin.md)) |
 | `dev/` | a Yamcs with the plugin and the PUS simulator, for development ([dev/README.md](dev/README.md)) |
-| `tools/golden/` | the Java side of the golden tests |
 
 ## Adding it to Yamcs
 
@@ -53,7 +52,7 @@ The jar is `plugin/target/web-packet-viewer-*.jar`.
 ## Tests
 
 ```bash
-cargo test                                # pv-core, golden tests (tools/golden/run.sh first)
+cargo test                                # pv-core
 (cd wasm && node test/e2e.mjs && node test/perf.mjs)
 (cd web && npm run e2e)                   # against dev/yamcs
 ```

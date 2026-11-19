@@ -1,5 +1,5 @@
 // End-to-end test of dist/packet-viewer-client.js in Node: the worker runs in a worker thread with the
-// globals of a web worker. Uses the data of tools/golden/run.sh (target/golden).
+// globals of a web worker. Uses the quickstart data of the Yamcs packet viewer (test/data).
 // node test/e2e.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { Worker } from 'node:worker_threads';
 import { PacketViewerClient } from '../dist/packet-viewer-client.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const golden = join(here, '../../target/golden');
+const data = join(here, 'data');
 
 /** a web Worker look-alike running the source in a worker thread */
 function nodeWorker(source) {
@@ -47,13 +47,13 @@ const log = [];
 const c = new PacketViewerClient({ createWorker: nodeWorker, onLog: (m) => log.push(m) });
 try {
   assert.deepEqual((await c.init(config)).fileFormats, ['CCSDS Packets']);
-  const mdb = await c.loadMdb([readFileSync(join(golden, 'mdb/xtce.xml'), 'utf8')]);
+  const mdb = await c.loadMdb([readFileSync(join(data, 'xtce.xml'), 'utf8')]);
   assert.equal(mdb.rootContainer, '/myproject/CCSDSPacket');
   assert.deepEqual(log, ['Loaded definition of 3 sequence containers and 40 parameters']);
 
   // file
   // (file-backed blobs cannot be sent to worker threads in Node)
-  const file = new Blob([readFileSync(join(golden, 'tm-data/testdata.ccsds'))]);
+  const file = new Blob([readFileSync(join(data, 'testdata.ccsds'))]);
   const progress = [];
   const f = await c.openFile(file, 0, (p) => progress.push(p));
   assert.equal(f.packetCount, 1800);

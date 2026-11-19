@@ -1,3 +1,0 @@
-fileFormats:
-  - name: CCSDS Packets
-    packetInputStreamClassName: org.yamcs.tctm.CcsdsPacketInputStream

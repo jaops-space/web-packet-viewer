@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use pv_core::{config::ViewerConfig, split::PacketReader, viewer::Viewer};
 
-const DIR: &str = "target/golden";
+const DIR: &str = "wasm/test/data";
 
 fn main() {
     let n: usize = std::env::args().nth(1).map_or(100, |s| s.parse().unwrap());
@@ -15,9 +15,9 @@ fn main() {
     )
     .unwrap();
     let mut v = Viewer::new(config).unwrap();
-    v.load_mdb(&[&std::fs::read_to_string(format!("{DIR}/mdb/xtce.xml")).unwrap()]).unwrap();
+    v.load_mdb(&[&std::fs::read_to_string(format!("{DIR}/xtce.xml")).unwrap()]).unwrap();
     v.set_source(Some(0)).unwrap();
-    let data = std::fs::read(format!("{DIR}/tm-data/testdata.ccsds")).unwrap().repeat(n);
+    let data = std::fs::read(format!("{DIR}/testdata.ccsds")).unwrap().repeat(n);
 
     let t = Instant::now();
     let packets = PacketReader::new(v.file_formats()[0].splitter.clone()).push(&data).unwrap();

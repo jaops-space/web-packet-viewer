@@ -28,10 +28,6 @@ The whole chain (plugin, Yamcs archive API, wasm worker), once some packets are 
 (cd wasm && node build.mjs && node test/live.mjs)
 ```
 
-`tools/golden/pus/` holds packets recorded from this simulator (`packets.raw`, from
-`/api/archive/simulator:exportPackets`) and the MDB configuration used by `tools/golden/run.sh` to compare the
-decoding with the Java packet viewer.
-
 The smoke tests of the web UI (Playwright, with the installed Google Chrome), once some packets are archived:
 
 ```bash

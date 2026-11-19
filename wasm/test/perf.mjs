@@ -1,6 +1,6 @@
-// Phase 5 performance targets, on the worker bundle in Node (the wasm runs as in the browser):
+// Performance targets, on the worker bundle in Node (the wasm runs as in the browser):
 // a 1M-packet file loads without blocking the main thread; a filter over 100k packets in < 1 s; the details of a
-// packet in < 10 ms; memory close to the file size. Uses the data of tools/golden/run.sh (target/golden).
+// packet in < 10 ms; memory close to the file size. Uses the quickstart data of the Yamcs packet viewer (test/data).
 // node test/perf.mjs [packets]
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { Worker } from 'node:worker_threads';
 import { PacketViewerClient } from '../dist/packet-viewer-client.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const golden = join(here, '../../target/golden');
+const data = join(here, 'data');
 const wanted = Number(process.argv[2] || 1_000_000);
 
 function nodeWorker(source) {
@@ -58,11 +58,11 @@ async function maxLag(promise) {
   }
 }
 
-const one = readFileSync(join(golden, 'tm-data/testdata.ccsds'));
+const one = readFileSync(join(data, 'testdata.ccsds'));
 const c = new PacketViewerClient({ createWorker: nodeWorker });
 try {
   await c.init(config);
-  await c.loadMdb([readFileSync(join(golden, 'mdb/xtce.xml'), 'utf8')]);
+  await c.loadMdb([readFileSync(join(data, 'xtce.xml'), 'utf8')]);
   const base = (await c.request({ op: 'status' })).memoryBytes;
 
   // 1800 packets per copy
