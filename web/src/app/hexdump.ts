@@ -71,25 +71,3 @@ export class HexDump {
     });
   }
 }
-
-/** The log panel (Java logText): scrolled to the last message. */
-@Component({
-  selector: 'pv-log',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'pv-log' },
-  template: `<pre #pre>{{ viewer.log().join('\n') }}</pre>`,
-})
-export class LogPanel {
-  readonly viewer = inject(Viewer);
-  private readonly el = inject(ElementRef);
-
-  constructor() {
-    effect(() => {
-      this.viewer.log();
-      setTimeout(() => {
-        const e = this.el.nativeElement as HTMLElement;
-        e.scrollTop = e.scrollHeight;
-      });
-    });
-  }
-}

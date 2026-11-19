@@ -1,10 +1,10 @@
 # The Yamcs plugin
 
-`plugin/` builds `com.jaops.yamcs:yamcs-packet-viewer`, a Yamcs 5.14 plugin. Put the jar in Yamcs's `lib/`
+`plugin/` builds `com.jaops.yamcs:web-packet-viewer`, a Yamcs 5.14 plugin. Put the jar in Yamcs's `lib/`
 (or add the dependency to a `yamcs:run` project). It:
 
 - adds the Packet Viewer to Yamcs-web: the `packet-viewer-web/` directory of the jar (built from `web/dist`) is
-  extracted to `<dataDir>/packet-viewer/web` and registered with `WebPlugin.addExtension("yamcs-packet-viewer")`;
+  extracted to `<dataDir>/packet-viewer/web` and registered with `WebPlugin.addExtension("web-packet-viewer")`;
 - serves what the browser needs besides the standard Yamcs APIs, under `/packet-viewer/api/{instance}/`.
 
 The packets themselves come from the standard Yamcs APIs (WebSocket topic `packets`,
@@ -52,6 +52,7 @@ format `{code, type, msg}`; responses are gzipped when the client accepts it.
 {
   "instance": "simulator",
   "stream": "tm_realtime",
+  "tmStreams": ["tm_realtime", "tm_dump"],
   "rootContainer": "/PUS/ccsds",
   "liveMaxLines": 1000,
   "mdbEtag": "\"9d322ba374072e572432e9da74042b8f\"",
@@ -59,7 +60,7 @@ format `{code, type, msg}`; responses are gzipped when the client accepts it.
 }
 ```
 
-`viewer` is passed as is to the worker (`init`), `rootContainer` to `loadMdb`. `rootContainer` is the configured
+`tmStreams` are the `tm` streams of the instance's `streamConfig`, offered for the live packets. `viewer` is passed as is to the worker (`init`), `rootContainer` to `loadMdb`. `rootContainer` is the configured
 one, else `Mdb.getRootSequenceContainer()` (which the browser cannot work out: XTCE has no declaration order
 in xtce-rs).
 

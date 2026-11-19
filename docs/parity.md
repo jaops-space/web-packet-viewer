@@ -21,22 +21,24 @@ reading the Java code side by side; `web/e2e/smoke.spec.ts` covers the main path
 | Find bar | Ctrl+F, substring of the name ignoring case, next/previous with wrap, `n of m`, `Parameter not found`, bold matches, Esc |
 | Structure tab | containers by inheritance and start offset, leaves `bitOffset/bitSize name`, multi-selection highlights |
 | Hex dump | 16 bytes a line, offsets in grey, highlights at nibble precision in hex and ASCII, scrolled to the first; Copy hex (upper case) |
-| Log | `Loaded definition of …`, `Loaded N packets from "file"`, `Encountered end of file while loading …`, `Cancelled loading …`, `Error while loading …`, `preprocessor returned null packet`, `disconnected` |
+| Log | `Loaded definition of …`, `Loaded N packets from "file"`, `Encountered end of file while loading …`, `Cancelled loading …`, `Error while loading …`, `preprocessor returned null packet` (in the status line) |
 | Loading a file | progress with Cancel; Cancel clears the window as in Java |
 
 ## Deliberately different
 
 | Java | Web | Why |
 |---|---|---|
-| Connect to Yamcs: URL, credentials, instance, stream, server or local MDB | the Yamcs-web session and instance; Connect asks only for the stream | no separate connection in the browser |
-| MDB loaded on connect / file open (`mdb.yaml` name) | the instance MDB, loaded when the page opens; File → Mission Database… for local XTCE files | the browser has no `etc/` |
-| Recent files reopen by path | the name and format are remembered; choosing the item asks for the file again | browsers cannot reopen a file by path |
+| Menu bar File/Edit/Navigate/View, Open and Connect dialogs | toolbar buttons and a more menu, a source bar (Live / Archive / Local file) above the filter, a navigation bar above the table | a Yamcs-web page |
+| Connect to Yamcs: URL, credentials, instance, stream, server or local MDB | the Yamcs-web session and instance; Live asks only for the stream; Pause/Resume keeps the packets received | no separate connection in the browser |
+| MDB loaded on connect / file open (`mdb.yaml` name) | the instance MDB, loaded when the page opens; Mission database… (more menu) for local XTCE files | the browser has no `etc/` |
+| Recent files reopen by path | not kept; a file can also be dropped on the page | browsers cannot reopen a file by path |
+| Log panel | a status line with the last message (the recent ones in its tooltip); errors as Yamcs-web messages | a Yamcs-web page |
 | Log path of the file | its name | the browser does not know the path |
 | Nominal/Danger columns always empty (no alarm checking in its processor) | filled from the alarm ranges of the MDB | improvement |
 | Go to a packet hidden by the filter: exception | a message, the packet's details are shown | Java bug |
 | Filter on a qualified name not in the packet: NullPointerException; numeric compare with a non-number: NumberFormatException | no match | Java bugs |
 | — | Archive source (time range, packet names) | addition |
-| — | Disconnect button, packet counts next to the filter, progress of the filter | additions |
+| — | packet counts, progress of the filter | additions |
 | Window title `Yamcs Packet Viewer - file` | the source in the page toolbar | Yamcs-web page |
 
 ## Not ported

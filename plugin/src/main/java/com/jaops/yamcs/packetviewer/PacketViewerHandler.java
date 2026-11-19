@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.yamcs.StreamConfig;
 import org.yamcs.YamcsServer;
 import org.yamcs.http.BadRequestException;
 import org.yamcs.http.BodyHandler;
@@ -26,6 +27,7 @@ import org.yamcs.security.SystemPrivilege;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -118,6 +120,11 @@ public class PacketViewerHandler extends BodyHandler {
         var o = new JsonObject();
         o.addProperty("instance", instance);
         o.addProperty("stream", ic.stream());
+        var tmStreams = new JsonArray();
+        for (var e : StreamConfig.getInstance(instance).getTmEntries()) {
+            tmStreams.add(e.getName());
+        }
+        o.add("tmStreams", tmStreams);
         o.addProperty("rootContainer", root);
         o.addProperty("liveMaxLines", ic.liveMaxLines());
         o.addProperty("mdbEtag", export.etag());

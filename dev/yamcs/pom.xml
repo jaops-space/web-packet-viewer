@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.jaops.yamcs</groupId>
-  <artifactId>packet-viewer-dev-yamcs</artifactId>
+  <artifactId>web-packet-viewer-dev-yamcs</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>packet viewer development Yamcs</name>
+  <name>web-packet-viewer development Yamcs</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -35,7 +35,7 @@
     <!-- install it first: (cd ../../plugin && mvn install) -->
     <dependency>
       <groupId>com.jaops.yamcs</groupId>
-      <artifactId>yamcs-packet-viewer</artifactId>
+      <artifactId>web-packet-viewer</artifactId>
       <version>0.1.0-SNAPSHOT</version>
     </dependency>
   </dependencies>

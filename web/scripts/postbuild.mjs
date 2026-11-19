@@ -4,7 +4,7 @@
 import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 
 const dist = new URL('../dist/', import.meta.url);
-const moves = { 'main.js': 'yamcs-packet-viewer.js', 'styles.css': 'yamcs-packet-viewer.css' };
+const moves = { 'main.js': 'web-packet-viewer.js', 'styles.css': 'web-packet-viewer.css' };
 for (const [from, to] of Object.entries(moves)) {
   if (existsSync(new URL(from, dist))) renameSync(new URL(from, dist), new URL(to, dist));
 }

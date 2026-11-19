@@ -1,5 +1,5 @@
 {
-  "name": "yamcs-packet-viewer-web",
+  "name": "web-packet-viewer-web",
   "version": "0.1.0",
   "private": true,
   "description": "Packet Viewer, a Yamcs-web extension",

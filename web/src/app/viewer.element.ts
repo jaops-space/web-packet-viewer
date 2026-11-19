@@ -15,86 +15,65 @@ import { WebappSdkModule, YamcsWebExtension } from '@yamcs/webapp-sdk';
 import { firstValueFrom } from 'rxjs';
 import type { ParamRow } from '../../../wasm/dist/packet-viewer-client.js';
 import { Details } from './details';
-import { GoToDialog, LovDialog, OpenDialog, OpenResult } from './dialogs';
-import { HexDump, LogPanel } from './hexdump';
+import { GoToDialog, LovDialog, MdbDialog, MdbResult } from './dialogs';
+import { HexDump } from './hexdump';
 import { PacketsTable } from './packets-table';
-import { Viewer } from './viewer';
+import { SourceBar } from './source-bar';
+import { MOD, Viewer } from './viewer';
 
 export const ELEMENT = 'packet-viewer';
 
-const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
-
-/** The routed element, /ext/packet-viewer?c=<instance>: the Java PacketViewer window. */
+/** The routed element, /ext/packet-viewer?c=<instance>. */
 @Component({
   selector: 'pv-page',
-  imports: [WebappSdkModule, PacketsTable, Details, HexDump, LogPanel],
+  imports: [WebappSdkModule, PacketsTable, Details, HexDump, SourceBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
     <ya-instance-page noscroll>
       <ya-instance-toolbar [label]="'Packet Viewer'">
-        <button mat-button class="pv-menubutton" [matMenuTriggerFor]="fileMenu">File</button>
-        <button mat-button class="pv-menubutton" [matMenuTriggerFor]="editMenu">Edit</button>
-        <button mat-button class="pv-menubutton" [matMenuTriggerFor]="navMenu">Navigate</button>
-        <button mat-button class="pv-menubutton" [matMenuTriggerFor]="viewMenu">View</button>
-        @if (v.connected()) {
-          <ya-page-button icon="stop" (clicked)="v.stopLive()">Disconnect</ya-page-button>
-        }
-        <span class="pv-source" [title]="v.source().label">{{ v.source().label }}</span>
-      </ya-instance-toolbar>
-
-      <mat-menu #fileMenu="matMenu">
-        <button mat-menu-item [disabled]="!v.ready()" (click)="open('file')">Open…<span class="pv-shortcut">{{ mod }}O</span></button>
-        <button mat-menu-item [disabled]="!v.ready()" (click)="open('live')">Connect to Yamcs…<span class="pv-shortcut">{{ mod }}Y</span></button>
-        <button mat-menu-item [disabled]="!v.ready()" (click)="open('archive')">Load from Archive…</button>
-        @if (v.prefs().recent.length) {
-          <mat-divider />
-          @for (r of v.prefs().recent; track r.name; let i = $index) {
-            <button mat-menu-item [disabled]="!v.ready()" [title]="'Choose ' + r.name + ' again (' + (v.fileFormats()[r.format] ?? '?') + ')'" (click)="reopen(r.format)">
-              {{ i + 1 }} {{ r.name }}
-            </button>
+        @if (v.source().kind === 'live') {
+          @if (v.connected()) {
+            <ya-page-button icon="pause" (clicked)="v.pauseLive()">Pause</ya-page-button>
+          } @else {
+            <ya-page-button icon="play_arrow" (clicked)="v.resumeLive()">Resume</ya-page-button>
           }
         }
-        <mat-divider />
-        <button mat-menu-item (click)="open('mdb')">Mission Database…</button>
-      </mat-menu>
-      <mat-menu #editMenu="matMenu">
-        <button mat-menu-item [disabled]="!v.details()" (click)="details()?.openFind()">Find Parameter…<span class="pv-shortcut">{{ mod }}F</span></button>
-        <mat-divider />
-        <button mat-menu-item [disabled]="!v.details() || v.details()?.row === null" (click)="v.toggleMark()">
-          {{ v.selectedMarked() ? 'Unmark Packet' : 'Mark Packet' }}<span class="pv-shortcut">{{ mod }}M</span>
-        </button>
-      </mat-menu>
-      <mat-menu #navMenu="matMenu">
-        <button mat-menu-item [disabled]="!v.status().rowCount" (click)="goTo()">Go to Packet…<span class="pv-shortcut">{{ mod }}G</span></button>
-        <mat-divider />
-        <button mat-menu-item [disabled]="!v.details()?.canGoBack" (click)="v.back()">Back<span class="pv-shortcut">Alt+←</span></button>
-        <button mat-menu-item [disabled]="!v.details()?.canGoForward" (click)="v.forward()">Forward<span class="pv-shortcut">Alt+→</span></button>
-        <mat-divider />
-        <button mat-menu-item [disabled]="!v.status().rowCount" (click)="v.neighbour(true)">Previous Packet<span class="pv-shortcut">Alt+↑</span></button>
-        <button mat-menu-item [disabled]="!v.status().rowCount" (click)="v.neighbour(false)">Next Packet<span class="pv-shortcut">Alt+↓</span></button>
-      </mat-menu>
-      <mat-menu #viewMenu="matMenu">
-        <button mat-menu-item (click)="v.updatePrefs({ autoScroll: !v.prefs().autoScroll })">
-          <span class="material-symbols pv-check">{{ v.prefs().autoScroll ? 'check_box' : 'check_box_outline_blank' }}</span>Auto-Scroll To Last Packet
-        </button>
-        <button mat-menu-item (click)="v.updatePrefs({ autoSelect: !v.prefs().autoSelect })">
-          <span class="material-symbols pv-check">{{ v.prefs().autoSelect ? 'check_box' : 'check_box_outline_blank' }}</span>Auto-Select Last Packet
-        </button>
-        <mat-divider />
-        <button mat-menu-item (click)="v.clear()">Clear</button>
-      </mat-menu>
+        <ya-page-button icon="delete_sweep" [disabled]="!v.status().packetCount" (clicked)="v.clear()">Clear</ya-page-button>
+        <ya-more icon="more_vert">
+          <button mat-menu-item [disabled]="!v.status().rowCount" (click)="goTo()">Go to packet…<span class="pv-shortcut">{{ mod }}G</span></button>
+          <button mat-menu-item [disabled]="!v.details()" (click)="details()?.openFind()">Find parameter…<span class="pv-shortcut">{{ mod }}F</span></button>
+          <mat-divider />
+          <button mat-menu-item (click)="v.updatePrefs({ autoScroll: !v.prefs().autoScroll })">
+            <span class="material-symbols pv-check">{{ v.prefs().autoScroll ? 'check_box' : 'check_box_outline_blank' }}</span>Scroll to new packets
+          </button>
+          <button mat-menu-item (click)="v.updatePrefs({ autoSelect: !v.prefs().autoSelect })">
+            <span class="material-symbols pv-check">{{ v.prefs().autoSelect ? 'check_box' : 'check_box_outline_blank' }}</span>Select new packets
+          </button>
+          <mat-divider />
+          <button mat-menu-item (click)="openMdb()">Mission database…</button>
+        </ya-more>
+        <span class="pv-source" [title]="v.source().label">{{ v.source().label }}</span>
+      </ya-instance-toolbar>
 
       @if (v.fatal(); as msg) {
         <ya-empty-message headerTitle="Packet Viewer">{{ msg }}</ya-empty-message>
       } @else {
-        <div class="pv" #root (keydown)="keys($event)">
+        <div
+          class="pv"
+          #root
+          [class.pv-dropping]="dropping()"
+          (keydown)="keys($event)"
+          (dragover)="dragOver($event)"
+          (dragleave)="dropping.set(false)"
+          (drop)="drop($event)">
+          <pv-source-bar (openFile)="pickFile()" />
           <div class="pv-filterbar">
             <div class="pv-filter" [class.pv-invalid]="invalid()">
               <input
                 #filter
                 [value]="filterText()"
-                placeholder="Display Filter (e.g. my-parameter == 123)"
+                placeholder="Display filter (e.g. my-parameter == 123)"
                 [title]="invalid() ?? ''"
                 (input)="edit($any($event.target).value)"
                 (keydown.enter)="apply()"
@@ -108,12 +87,7 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
                 <button mat-menu-item (click)="edit(h); apply()">{{ h }}</button>
               }
             </mat-menu>
-            <ya-button [disabled]="!filterText()" (click)="edit(''); apply()">Clear</ya-button>
-            @if (v.filter().applied; as f) {
-              <span class="pv-mute pv-ellipsis" [title]="f">{{ v.status().rowCount }} of {{ v.status().packetCount }} packets</span>
-            } @else {
-              <span class="pv-mute">{{ v.status().packetCount }} packets</span>
-            }
+            <ya-button [disabled]="!filterText()" (click)="edit(''); apply()">Clear filter</ya-button>
           </div>
           @if (v.progress(); as p) {
             <div class="pv-progress">
@@ -125,7 +99,43 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
             </div>
           }
           <div class="pv-main">
-            <pv-packets [style.width.px]="v.prefs().packetsWidth" (goTo)="goTo()" />
+            <div class="pv-left" [style.width.px]="v.prefs().packetsWidth">
+              <div class="pv-navbar">
+                <button class="pv-icon" [disabled]="!v.details()?.canGoBack" title="Back (Alt+←)" (click)="v.back()">
+                  <span class="material-symbols">arrow_back</span>
+                </button>
+                <button class="pv-icon" [disabled]="!v.details()?.canGoForward" title="Forward (Alt+→)" (click)="v.forward()">
+                  <span class="material-symbols">arrow_forward</span>
+                </button>
+                <span class="pv-sep"></span>
+                <button class="pv-icon" [disabled]="!v.status().rowCount" title="Previous packet (Alt+↑)" (click)="v.neighbour(true)">
+                  <span class="material-symbols">keyboard_arrow_up</span>
+                </button>
+                <button class="pv-icon" [disabled]="!v.status().rowCount" title="Next packet (Alt+↓)" (click)="v.neighbour(false)">
+                  <span class="material-symbols">keyboard_arrow_down</span>
+                </button>
+                <button class="pv-icon" [disabled]="!v.status().rowCount" title="Go to packet… ({{ mod }}G)" (click)="goTo()">
+                  <span class="material-symbols">move_down</span>
+                </button>
+                <span class="pv-sep"></span>
+                <button
+                  class="pv-icon"
+                  [disabled]="v.details()?.row == null"
+                  [title]="(v.selectedMarked() ? 'Unmark packet' : 'Mark packet') + ' (' + mod + 'M)'"
+                  (click)="v.toggleMark()">
+                  <span class="material-symbols" [class.pv-filled]="v.selectedMarked()">bookmark</span>
+                </button>
+                <span class="pv-grow"></span>
+                <span class="pv-mute pv-ellipsis pv-count" [title]="v.filter().applied ?? ''">
+                  @if (v.filter().applied) {
+                    {{ v.status().rowCount }} of {{ v.status().packetCount }} packets
+                  } @else {
+                    {{ v.status().packetCount }} packets
+                  }
+                </span>
+              </div>
+              <pv-packets (goTo)="goTo()" />
+            </div>
             <div class="pv-split-v" (mousedown)="drag($event, 'packetsWidth', 1)"></div>
             <div class="pv-right">
               <pv-details (lov)="lov($event)" (filterRequest)="edit($event); apply()" />
@@ -133,8 +143,13 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
               <pv-hexdump [style.height.px]="v.prefs().hexHeight" />
             </div>
           </div>
-          <div class="pv-split-h" (mousedown)="drag($event, 'logHeight', -1)"></div>
-          <pv-log [style.height.px]="v.prefs().logHeight" />
+          <div class="pv-status">
+            <span class="pv-mdb" [title]="'Mission database: ' + v.mdbLabel()">MDB: {{ v.mdbLabel() || '…' }}</span>
+            <span class="pv-message pv-ellipsis" [title]="recentLog()">{{ v.message() }}</span>
+          </div>
+          @if (dropping()) {
+            <div class="pv-dropzone">Drop the file to open it ({{ v.fileFormats()[sourceBar()?.fileFormat() ?? 0] }})</div>
+          }
         </div>
       }
     </ya-instance-page>
@@ -147,6 +162,11 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
   private readonly dialog = inject(MatDialog);
   readonly details = viewChild(Details);
   readonly table = viewChild(PacketsTable);
+  readonly sourceBar = viewChild(SourceBar);
+  /** a file is dragged over the page */
+  readonly dropping = signal(false);
+  /** the last messages, as the tooltip of the status line */
+  readonly recentLog = computed(() => this.v.log().slice(-15).join('\n'));
   readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filter');
   readonly root = viewChild<ElementRef<HTMLElement>>('root');
 
@@ -161,7 +181,6 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
     if (this.v.filter().error && t.trim()) return this.v.filter().error;
     return null;
   });
-  private pendingFormat = 0;
   private filePicker?: HTMLInputElement;
   private readonly globalKeys = (e: KeyboardEvent) => this.keys(e, true);
 
@@ -200,44 +219,49 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
 
   // ---------------------------------------------------------------- dialogs
 
-  async open(tab: 'file' | 'live' | 'archive' | 'mdb', format?: number) {
-    const ref = this.dialog.open<OpenDialog, any, OpenResult>(OpenDialog, {
-      width: '560px',
-      data: { tab, format, localMdb: this.v.localMdb() },
+  async openMdb() {
+    const ref = this.dialog.open<MdbDialog, any, MdbResult>(MdbDialog, {
+      width: '520px',
+      data: { localMdb: this.v.localMdb() },
     });
     const r = await firstValueFrom(ref.afterClosed());
     if (!r) return;
-    switch (r.kind) {
-      case 'file':
-        await this.v.openFile(r.file, r.format);
-        break;
-      case 'live':
-        await this.v.startLive(r.stream);
-        break;
-      case 'archive':
-        await this.v.loadArchive(r.request);
-        break;
-      case 'mdb':
-        if (r.files) await this.v.loadLocalMdb(r.files);
-        else await this.v.reloadInstanceMdb();
-        break;
-    }
-    this.table()?.focus();
+    if (r.files) await this.v.loadLocalMdb(r.files);
+    else await this.v.reloadInstanceMdb();
   }
 
-  /** a recent file: the browser cannot open it again by itself, the user chooses it */
-  reopen(format: number) {
-    this.pendingFormat = format;
+  /** the file picker; the file is opened in the format chosen in the source bar */
+  pickFile() {
     if (!this.filePicker) {
       this.filePicker = document.createElement('input');
       this.filePicker.type = 'file';
       this.filePicker.onchange = () => {
         const f = this.filePicker!.files?.[0];
-        if (f) this.v.openFile(f, this.pendingFormat);
+        if (f) this.openFile(f);
         this.filePicker!.value = '';
       };
     }
     this.filePicker.click();
+  }
+
+  private async openFile(file: File) {
+    await this.v.openFile(file, this.sourceBar()?.fileFormat() ?? 0);
+    this.table()?.focus();
+  }
+
+  dragOver(e: DragEvent) {
+    if (!this.v.ready() || !e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    this.dropping.set(true);
+  }
+
+  drop(e: DragEvent) {
+    this.dropping.set(false);
+    const f = e.dataTransfer?.files[0];
+    if (!f || !this.v.ready()) return;
+    e.preventDefault();
+    this.openFile(f);
   }
 
   async goTo() {
@@ -262,7 +286,7 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
   // ---------------------------------------------------------------- keyboard
 
   /**
-   * The accelerators of the Java menus. On the window too (global) when nothing else has the focus, so that they work
+   * The keyboard shortcuts. On the window too (global) when nothing else has the focus, so that they work
    * right after opening the page; Alt+arrows are the browser's history keys and are taken only inside the viewer.
    */
   keys(e: KeyboardEvent, global = false) {
@@ -275,10 +299,7 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
     if (ctrl && !e.altKey && !e.shiftKey) {
       switch (e.key.toLowerCase()) {
         case 'o':
-          if (this.v.ready()) this.open('file');
-          break;
-        case 'y':
-          if (this.v.ready()) this.open('live');
+          if (this.v.ready()) this.pickFile();
           break;
         case 'f':
           if (this.v.details()) this.details()?.openFind();
@@ -320,7 +341,7 @@ export class ViewerElement extends YamcsWebExtension implements OnDestroy {
 
   // ---------------------------------------------------------------- split panes
 
-  drag(e: MouseEvent, key: 'packetsWidth' | 'hexHeight' | 'logHeight', sign: 1 | -1) {
+  drag(e: MouseEvent, key: 'packetsWidth' | 'hexHeight', sign: 1 | -1) {
     e.preventDefault();
     const horizontal = key === 'packetsWidth';
     const start = horizontal ? e.clientX : e.clientY;

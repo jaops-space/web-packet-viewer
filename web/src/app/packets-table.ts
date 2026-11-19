@@ -11,10 +11,21 @@ import {
   viewChild,
 } from '@angular/core';
 import type { Row } from '../../../wasm/dist/packet-viewer-client.js';
+import { ColumnWidths } from './column-widths';
 import { ContextMenu, MenuItem } from './context-menu';
 import { Viewer } from './viewer';
 
 const ROW = 22;
+/** a value as Yamcs formats numbers (Java toString: 12, -1.5, 1.0E-5, NaN, Infinity) */
+const NUMBER = /^[-+]?(\d+(\.\d*)?([eE][-+]?\d+)?|NaN|Infinity)$/;
+const PARAM_WIDTH = 140;
+/** the columns before the parameter ones, with their default widths */
+const FIXED = [
+  { key: '#', label: '#', width: 64, right: true },
+  { key: 'time', label: 'Generation Time', width: 215, right: false },
+  { key: 'name', label: 'Packet Name', width: 200, right: false },
+  { key: 'length', label: 'Length', width: 60, right: true },
+];
 const MARGIN = 30;
 /**
  * The tallest the rows element gets: browsers cap the height of an element (Firefox at about 17.9M px, 800k rows),
@@ -34,13 +45,14 @@ const MAX_HEIGHT = 8_000_000;
   template: `
     <div #body class="pv-scroll" tabindex="0" (scroll)="onScroll()" (keydown)="key($event)">
       <div class="pv-grid pv-head" [style.grid-template-columns]="template()">
-        <div class="r" (contextmenu)="headerMenu($event, -1)">#</div>
-        <div (contextmenu)="headerMenu($event, -1)">Generation Time</div>
-        <div (contextmenu)="headerMenu($event, -1)">Packet Name</div>
-        <div class="r" (contextmenu)="headerMenu($event, -1)">Length</div>
+        @for (c of fixed; track c.key) {
+          <div [class.r]="c.right" (contextmenu)="headerMenu($event, -1)">
+            {{ c.label }}<span class="pv-colresize" (mousedown)="cols.start($event, c.key)" (dblclick)="cols.reset(c.key)"></span>
+          </div>
+        }
         @for (c of viewer.columns(); track c; let i = $index) {
-          <div class="pv-colhead" [title]="c + ' (right-click: Hide Column)'" (contextmenu)="headerMenu($event, i)">
-            {{ shortName(c) }}
+          <div class="pv-colhead" [class.r]="numeric()[i]" [title]="c + ' (right-click: Hide Column)'" (contextmenu)="headerMenu($event, i)">
+            {{ shortName(c) }}<span class="pv-colresize" (mousedown)="cols.start($event, c)" (dblclick)="cols.reset(c)"></span>
           </div>
         }
       </div>
@@ -58,8 +70,8 @@ const MAX_HEIGHT = 8_000_000;
               <div>{{ r.generationTime }}</div>
               <div [title]="r.name">{{ r.name }}</div>
               <div class="r">{{ r.length }}</div>
-              @for (v of r.columns; track $index) {
-                <div [title]="v ?? ''">{{ v ?? '' }}</div>
+              @for (v of r.columns; track $index; let i = $index) {
+                <div [class.r]="numeric()[i]" [title]="v ?? ''">{{ v ?? '' }}</div>
               }
             </div>
           }
@@ -89,13 +101,41 @@ export class PacketsTable {
   private fetchSeq = 0;
   private resize = new ResizeObserver(() => this.onScroll());
 
-  readonly template = computed(() => `64px 215px minmax(160px, 1fr) 60px ${'minmax(110px, 160px) '.repeat(this.viewer.columns().length)}`);
+  readonly fixed = FIXED;
+  /**
+   * per parameter column: right-aligned, like # and Length, when its values in view are numbers; a column without
+   * values in view keeps its alignment
+   */
+  readonly numeric = computed(() => {
+    const columns = this.viewer.columns();
+    const rows = this.rows();
+    return columns.map((qn, i) => {
+      let any = false;
+      for (const r of rows) {
+        const v = r.columns[i];
+        if (v == null || v === '') continue;
+        if (!NUMBER.test(v)) {
+          this.lastNumeric.set(qn, false);
+          return false;
+        }
+        any = true;
+      }
+      if (any) this.lastNumeric.set(qn, true);
+      return this.lastNumeric.get(qn) ?? false;
+    });
+  });
+  private readonly lastNumeric = new Map<string, boolean>();
+  readonly cols = new ColumnWidths(this.viewer, 'columnWidths', (c) => FIXED.find((f) => f.key === c)?.width ?? PARAM_WIDTH);
+
+  readonly template = computed(() =>
+    [...FIXED.map((c) => c.key), ...this.viewer.columns()].map((c) => `${this.cols.width(c)}px`).join(' '),
+  );
 
   readonly empty = computed(() => {
     const v = this.viewer;
     if (v.status().packetCount && v.filter().applied) return 'No packet matches the display filter';
     if (v.source().kind === 'live') return 'Waiting for packets…';
-    return v.ready() ? 'No packets. File → Open… a packet file, or Connect to Yamcs' : '';
+    return v.ready() ? 'No packets. Start the live packets, load them from the archive or open a file.' : '';
   });
 
   constructor() {

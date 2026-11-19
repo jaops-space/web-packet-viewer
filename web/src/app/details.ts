@@ -13,7 +13,22 @@ import {
 import type { ParamRow, TreeNode } from '../../../wasm/dist/packet-viewer-client.js';
 import { NgTemplateOutlet } from '@angular/common';
 import { ContextMenu, MenuItem } from './context-menu';
-import { Viewer } from './viewer';
+import { ColumnWidths } from './column-widths';
+import { MOD, Viewer } from './viewer';
+
+/** the columns of the Parameters table, with their default widths */
+const PARAM_COLUMNS = [
+  { key: 'name', label: 'Name', width: 220, right: false },
+  { key: 'eng', label: 'Eng Value', width: 140, right: false },
+  { key: 'raw', label: 'Raw Value', width: 110, right: false },
+  { key: 'nominalLow', label: 'Nominal Low', width: 95, right: false },
+  { key: 'nominalHigh', label: 'Nominal High', width: 95, right: false },
+  { key: 'dangerLow', label: 'Danger Low', width: 90, right: false },
+  { key: 'dangerHigh', label: 'Danger High', width: 90, right: false },
+  { key: 'bitOffset', label: 'Bit Offset', width: 75, right: true },
+  { key: 'bitSize', label: 'Bit Size', width: 65, right: true },
+  { key: 'calibration', label: 'Calibration', width: 200, right: false },
+];
 
 /**
  * The right side of the Java viewer above the hex dump: the Parameters and Structure tabs of the selected packet and
@@ -32,25 +47,28 @@ import { Viewer } from './viewer';
       @if (viewer.details(); as d) {
         <span class="pv-mute pv-ellipsis" [title]="d.name">#{{ d.nr }} {{ d.name }}</span>
       }
+      <button class="pv-icon" [disabled]="!viewer.details()" title="Find parameter ({{ mod }}F)" (click)="openFind()">
+        <span class="material-symbols">search</span>
+      </button>
     </div>
     @if (viewer.details()?.decodeError; as err) {
       <div class="pv-decode-error">{{ err }}</div>
     }
     <div class="pv-pane" #pane>
       @if (tab() === 'params') {
-        <table class="pv-params">
+        <table class="pv-params pv-resizable" [style.width.px]="tableWidth()">
+          <colgroup>
+            @for (c of paramColumns; track c.key) {
+              <col [style.width.px]="cols.width(c.key)" />
+            }
+          </colgroup>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Eng Value</th>
-              <th>Raw Value</th>
-              <th>Nominal Low</th>
-              <th>Nominal High</th>
-              <th>Danger Low</th>
-              <th>Danger High</th>
-              <th class="r">Bit Offset</th>
-              <th class="r">Bit Size</th>
-              <th>Calibration</th>
+              @for (c of paramColumns; track c.key) {
+                <th [class.r]="c.right" [title]="c.label">
+                  {{ c.label }}<span class="pv-colresize" (mousedown)="cols.start($event, c.key)" (dblclick)="cols.reset(c.key)"></span>
+                </th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -61,9 +79,9 @@ import { Viewer } from './viewer';
                 [attr.data-row]="i"
                 (mousedown)="click($event, i)"
                 (contextmenu)="paramMenu($event, i, p)">
-                <td [class.b]="matches().includes(i)">{{ p.name }}</td>
-                <td>{{ p.engValue }}</td>
-                <td>{{ p.rawValue ?? '-' }}</td>
+                <td [class.b]="matches().includes(i)" [title]="p.qualifiedName">{{ p.name }}</td>
+                <td [title]="p.engValue">{{ p.engValue }}</td>
+                <td [title]="p.rawValue ?? ''">{{ p.rawValue ?? '-' }}</td>
                 <td>{{ p.nominalLow }}</td>
                 <td>{{ p.nominalHigh }}</td>
                 <td>{{ p.dangerLow }}</td>
@@ -137,6 +155,10 @@ import { Viewer } from './viewer';
 export class Details {
   readonly viewer = inject(Viewer);
   readonly lov = output<ParamRow>();
+  readonly mod = MOD;
+  readonly paramColumns = PARAM_COLUMNS;
+  readonly cols = new ColumnWidths(this.viewer, 'paramColumnWidths', (c) => PARAM_COLUMNS.find((p) => p.key === c)?.width ?? 100);
+  readonly tableWidth = computed(() => PARAM_COLUMNS.reduce((sum, c) => sum + this.cols.width(c.key), 0));
   readonly tab = signal<'params' | 'tree'>('params');
   readonly params = computed(() => this.viewer.details()?.params ?? []);
   readonly selected = signal<Set<number>>(new Set());
@@ -169,9 +191,10 @@ export class Details {
   });
 
   constructor() {
-    // a new packet: no selection (Java clears the tables)
+    // another packet: no selection (Java clears the tables). Only the packet number counts: the details are
+    // replaced when the packet moves in the table (live packets, filter), and when it is selected again.
     effect(() => {
-      this.viewer.details();
+      this.viewer.selectedNr();
       untracked(() => {
         this.selected.set(new Set());
         this.treeSel.set(new Map());

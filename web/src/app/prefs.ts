@@ -1,37 +1,41 @@
 /**
- * What the Java viewer keeps in its Preferences, per Yamcs instance in browser storage: the parameter columns, the
- * filter history, the recent files, the View options, the pane sizes.
+ * What the viewer remembers per Yamcs instance in browser storage: the parameter columns, the filter history, the
+ * source last used, the View options, the pane and column sizes.
  */
 export interface Prefs {
   /** qualified names of the parameter columns of the packets table */
   columns: string[];
   /** most recent first, at most 10 */
   filterHistory: string[];
-  /** most recent first, at most 4: a file can only be opened again by choosing it */
-  recent: { name: string; format: number }[];
   autoScroll: boolean;
   autoSelect: boolean;
   /** widths/heights in px */
   packetsWidth: number;
   hexHeight: number;
-  logHeight: number;
+  /** packets table column widths in px, by column key ('#', 'time', 'name', 'length' or a parameter qualified name) */
+  columnWidths: Record<string, number>;
+  /** Parameters table column widths in px, by column key */
+  paramColumnWidths: Record<string, number>;
   lastSource?: 'live' | 'archive' | 'file';
-  archive?: { start: string; stop: string; names: string[] };
+  stream?: string;
+  /** the file format last used */
+  format?: number;
+  /** interval: an ISO duration back from now, or CUSTOM (start, stop) */
+  archive?: { interval: string; start: string; stop: string; names: string[] };
 }
 
 const DEFAULTS: Prefs = {
   columns: [],
   filterHistory: [],
-  recent: [],
   autoScroll: true,
   autoSelect: false,
   packetsWidth: 640,
   hexHeight: 260,
-  logHeight: 90,
+  columnWidths: {},
+  paramColumnWidths: {},
 };
 
 export const MAX_FILTER_HISTORY = 10;
-export const MAX_RECENT = 4;
 
 export function loadPrefs(instance: string): Prefs {
   try {

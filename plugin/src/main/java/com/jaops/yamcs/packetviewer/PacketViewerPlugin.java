@@ -21,16 +21,16 @@ import org.yamcs.http.HttpServer;
 import org.yamcs.logging.Log;
 
 /**
- * The packet viewer plugin ({@code yamcs-packet-viewer}): the Packet Viewer page of Yamcs-web, which decodes the
+ * The packet viewer plugin ({@code web-packet-viewer}): the Packet Viewer page of Yamcs-web, which decodes the
  * packets in the browser, and the HTTP resources it needs under {@code /packet-viewer/api/{instance}/} (docs/plugin.md).
  * <p>
  * Its configuration is the {@code packetViewer:} section of yamcs.yaml. Yamcs would name the section after the plugin,
- * which must stay {@code yamcs-packet-viewer} for Yamcs-web to create the {@code <yamcs-packet-viewer>} element.
+ * which must stay {@code web-packet-viewer} for Yamcs-web to create the {@code <web-packet-viewer>} element.
  */
 public class PacketViewerPlugin implements Plugin {
     private static final Log log = new Log(PacketViewerPlugin.class);
     public static final String CONFIG_SECTION = "packetViewer";
-    public static final String NAME = "yamcs-packet-viewer";
+    public static final String NAME = "web-packet-viewer";
     /** the directory of the web UI in the jar */
     static final String WEB = "packet-viewer-web";
 

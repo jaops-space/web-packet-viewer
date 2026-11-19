@@ -351,6 +351,8 @@ checksum = "66fee0b777b0f5ac1c69bb06d361268faafa61cd4682ae064a171c16c433e9e4"
 [[package]]
 name = "xtce-rs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c7515ebdc7965c48605748fc015ee309ad8ad60ad73cb43abdfc8a6599aae41"
 dependencies = [
  "bimap",
  "enum-map",

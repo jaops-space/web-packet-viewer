@@ -1,5 +1,5 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { ExtensionService, WebSocketCall } from '@yamcs/webapp-sdk';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { ExtensionService, Formatter, WebSocketCall } from '@yamcs/webapp-sdk';
 import {
   FilterResult,
   Highlight,
@@ -10,7 +10,7 @@ import {
   Status,
 } from '../../../wasm/dist/packet-viewer-client.js';
 import { Api, PluginConfig, base64ToBytes, errorText } from './api';
-import { MAX_RECENT, Prefs, loadPrefs, pushHistory, savePrefs } from './prefs';
+import { Prefs, loadPrefs, pushHistory, savePrefs } from './prefs';
 
 export type SourceKind = 'none' | 'live' | 'archive' | 'file';
 
@@ -40,6 +40,9 @@ export interface ArchiveRequest {
   names: string[];
 }
 
+/** the modifier of the keyboard shortcuts, as shown */
+export const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+
 const EMPTY_STATUS: Status = { packetCount: 0, rowCount: 0, filtering: false, range: null, maxHistory: 10, memoryBytes: 0 };
 const LIVE_FLUSH_MS = 100;
 const ARCHIVE_PAGE = 1000;
@@ -52,6 +55,7 @@ const ARCHIVE_PAGE = 1000;
 @Injectable({ providedIn: 'root' })
 export class Viewer {
   svc!: ExtensionService;
+  private readonly formatter = inject(Formatter);
   api: Api | null = null;
   client: PacketViewerClient | null = null;
 
@@ -66,7 +70,7 @@ export class Viewer {
   readonly localMdb = signal(false);
   readonly fatal = signal<string | null>(null);
 
-  readonly source = signal<Source>({ kind: 'none', label: '(no file loaded)' });
+  readonly source = signal<Source>({ kind: 'none', label: '' });
   readonly status = signal<Status>(EMPTY_STATUS);
   /** bumped when the rows change: the table fetches them again */
   readonly version = signal(0);
@@ -76,10 +80,17 @@ export class Viewer {
   readonly selectedMarked = signal(false);
   readonly highlight = signal<Highlight | null>(null);
   readonly log = signal<string[]>([]);
+  /** the last message, for the status line */
+  readonly message = computed(() => this.log().at(-1) ?? '');
   readonly progress = signal<Progress | null>(null);
   readonly filter = signal<FilterState>({ applied: null, error: null });
   readonly prefs = signal<Prefs>(loadPrefs(''));
+  /** the stream of the live source */
+  readonly liveStream = signal<string | null>(null);
+  /** subscribed to the live packets */
   readonly connected = signal(false);
+  /** the source is live but the subscription is paused */
+  readonly paused = computed(() => this.source().kind === 'live' && !this.connected());
   /** the table scrolls to this row (bumped by auto-scroll and navigation) */
   readonly scrollTo = signal<{ row: number; seq: number } | null>(null);
 
@@ -112,7 +123,7 @@ export class Viewer {
     this.localMdb.set(false);
     this.fatal.set(null);
     this.config.set(null);
-    this.source.set({ kind: 'none', label: '(no file loaded)' });
+    this.source.set({ kind: 'none', label: '' });
     this.status.set(EMPTY_STATUS);
     this.columns.set([]);
     this.details.set(null);
@@ -164,7 +175,7 @@ export class Viewer {
     this.columns.set(columns);
     this.details.set(null);
     this.highlight.set(null);
-    this.source.set({ kind: 'none', label: '(no file loaded)' });
+    this.source.set({ kind: 'none', label: '' });
     await this.refresh();
     this.ready.set(true);
   }
@@ -258,8 +269,7 @@ export class Viewer {
   async openFile(file: File, format: number) {
     if (!this.ready()) return;
     await this.newSource('file', file.name, null, format);
-    const recent = [{ name: file.name, format }, ...this.prefs().recent.filter((r) => r.name !== file.name)];
-    this.updatePrefs({ recent: recent.slice(0, MAX_RECENT), lastSource: 'file' });
+    this.updatePrefs({ lastSource: 'file', format });
     const client = this.client!;
     const req = client.openFile(file, format, (p) => {
       this.progress.set({
@@ -291,13 +301,36 @@ export class Viewer {
     await this.afterAdd(this.status().rowCount);
   }
 
-  /** Java: Connect to Yamcs; the packets of a stream, at most liveMaxLines */
+  /** the packets of a stream as Yamcs receives them, at most liveMaxLines */
   async startLive(stream: string) {
     if (!this.ready()) return;
     const config = this.config()!;
+    await this.newSource('live', this.liveLabel(stream, false), config.liveMaxLines || null, null);
+    this.updatePrefs({ lastSource: 'live', stream });
+    this.liveStream.set(stream);
+    this.subscribe();
+  }
+
+  /** stops receiving the live packets, keeping those received */
+  pauseLive() {
+    if (!this.connected()) return;
+    this.stopLive();
+    this.addLog('Paused');
+  }
+
+  /** receives the live packets again, after those received before the pause */
+  resumeLive() {
+    if (this.source().kind !== 'live' || !this.liveStream() || this.connected()) return;
+    this.subscribe();
+  }
+
+  private liveLabel(stream: string, paused: boolean) {
+    return `${this.instance()} · ${stream} (${paused ? 'paused' : 'live'})`;
+  }
+
+  private subscribe() {
     const instance = this.instance()!;
-    await this.newSource('live', `${instance} · ${stream} (live)`, config.liveMaxLines || null, null);
-    this.updatePrefs({ lastSource: 'live' });
+    const stream = this.liveStream()!;
     const ws = (this.svc.yamcs.yamcsClient as any).webSocketClient;
     if (!ws) {
       this.error('No WebSocket connection to Yamcs');
@@ -307,7 +340,8 @@ export class Viewer {
       this.liveQueue.push({ data: base64ToBytes(p.packet), generationTime: p.generationTime ?? null });
     });
     this.connected.set(true);
-    this.addLog(`subscribed to the packets of stream ${stream} of instance ${instance}`);
+    this.source.set({ kind: 'live', label: this.liveLabel(stream, false) });
+    this.addLog(`Receiving the packets of stream ${stream}`);
     this.liveTimer = setInterval(() => this.flushLive(), LIVE_FLUSH_MS);
   }
 
@@ -315,14 +349,14 @@ export class Viewer {
     if (this.live) {
       this.live.cancel();
       this.live = undefined;
-      this.addLog('disconnected');
     }
     clearInterval(this.liveTimer);
     this.liveTimer = undefined;
     this.liveQueue = [];
     this.connected.set(false);
-    if (this.source().kind === 'live') {
-      this.source.update((s) => ({ ...s, label: s.label.replace(' (live)', ' (stopped)') }));
+    const stream = this.liveStream();
+    if (this.source().kind === 'live' && stream) {
+      this.source.set({ kind: 'live', label: this.liveLabel(stream, true) });
     }
   }
 
@@ -363,9 +397,10 @@ export class Viewer {
   /** packets of the archive, with their generation times from Yamcs */
   async loadArchive(req: ArchiveRequest) {
     if (!this.ready()) return;
-    const label = `${this.instance()} · archive ${req.start || '…'} – ${req.stop || '…'}`;
+    const t = (s: string) => (s ? this.formatter.formatDateTime(s) : '…');
+    const label = `${this.instance()} · archive ${t(req.start)} – ${t(req.stop)}`;
     await this.newSource('archive', label, null, null);
-    this.updatePrefs({ lastSource: 'archive', archive: req });
+    this.updatePrefs({ lastSource: 'archive' });
     const run = this.archiveRun;
     const cancel = () => {
       if (this.archiveRun === run) this.archiveRun++;
@@ -404,7 +439,7 @@ export class Viewer {
     }
   }
 
-  /** View → Clear */
+  /** removes the packets loaded (the live ones keep coming) */
   async clear() {
     if (!this.client) return;
     this.liveQueue = [];
@@ -473,8 +508,10 @@ export class Viewer {
     if (!client) return;
     try {
       const d = await client.select(nr);
+      const same = this.details()?.nr === nr;
       this.details.set(d);
-      this.highlight.set(null);
+      // the same packet again keeps the selection of its parameters, and so their highlight
+      if (!same) this.highlight.set(null);
       const s = await client.rows(d.row ?? 0, (d.row ?? 0) + 1);
       this.selectedMarked.set(d.row !== null && !!s.rows[0]?.marked);
       if (scroll && d.row !== null) this.scroll(d.row);

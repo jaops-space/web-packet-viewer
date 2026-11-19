@@ -5,6 +5,8 @@ import type { ViewerConfig } from '../../../wasm/dist/packet-viewer-client.js';
 export interface PluginConfig {
   instance: string;
   stream: string;
+  /** the tm streams of the instance (streamConfig) */
+  tmStreams: string[];
   rootContainer: string | null;
   liveMaxLines: number;
   mdbEtag: string;
@@ -23,7 +25,7 @@ export interface ArchivedPacket {
   packet: string;
 }
 
-const CACHE = 'yamcs-packet-viewer';
+const CACHE = 'web-packet-viewer';
 
 /** The plugin API and the Yamcs APIs the viewer uses, through Yamcs-web's client (its authentication applies). */
 export class Api {
@@ -80,11 +82,6 @@ export class Api {
   async packetNames(): Promise<string[]> {
     const r = await (await this.get(`api/archive/${encodeURIComponent(this.instance)}/packet-names`)).json();
     return r.packets ?? [];
-  }
-
-  async streams(): Promise<string[]> {
-    const r = await (await this.get(`api/archive/${encodeURIComponent(this.instance)}/streams`)).json();
-    return (r.streams ?? []).map((s: any) => s.name);
   }
 
   /** a page of archived packets, in generation time order */

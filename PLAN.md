@@ -43,7 +43,7 @@ Not ported (no meaning in the browser): server URL / auth types / Kerberos, `--e
 
 ```
 Browser (Yamcs-web)
- ├─ <yamcs-packet-viewer>   startup element: adds "Packet Viewer" to the Telemetry nav group
+ ├─ <web-packet-viewer>   startup element: adds "Packet Viewer" to the Telemetry nav group
  ├─ <packet-viewer>         routed at /ext/packet-viewer?c=<instance>   (Angular, UI only)
  │     │  postMessage (structured clone / transferables)
  │     ▼
@@ -51,7 +51,7 @@ Browser (Yamcs-web)
         packet store (arena), splitter, preprocessors, decoder, filter, hexdump/highlight
 
 Yamcs server
- └─ plugin "yamcs-packet-viewer" (Java)
+ └─ plugin "web-packet-viewer" (Java)
        ├─ registers the web extension
        ├─ GET  /api/packet-viewer/{instance}/config   file formats, rootContainer, defaultNamespace, limits
        └─ GET  /api/packet-viewer/{instance}/mdb      XTCE of the instance MDB (ETag = MDB fingerprint)
@@ -66,10 +66,10 @@ times, column values, marks) lives in the worker/wasm memory; the UI asks for ro
 ### Repository layout (`web-packet-viewer`)
 
 ```
-core/      Rust crate pv-core   (depends on ../../xtce-rs via path); native, unit + golden tests
+core/      Rust crate pv-core   (depends on xtce-rs from crates.io); native, unit + golden tests
 wasm/      Rust crate pv-wasm   (wasm-bindgen API over pv-core, worker message loop)
 web/       Angular extension    (copy of the fops web/ setup: Angular 22, webapp-sdk 1.6.7)
-plugin/    Maven, Java plugin   (com.jaops.yamcs:yamcs-packet-viewer, mirrors fops plugin/)
+plugin/    Maven, Java plugin   (com.jaops.yamcs:web-packet-viewer, mirrors fops plugin/)
 docs/      contract between the parts (like fops docs/plugin-api.md)
 ```
 
@@ -228,7 +228,7 @@ gzipped wasm in base64. `wasm/test/e2e.mjs` runs the bundle in a Node worker thr
 rows, columns, filter (valid/invalid/cancel/supersede), details, highlight, LOV, copy hex, packets from
 Yamcs; 180k packets load in 1.05 s and filter in 1.08 s.
 
-### Phase 3 — Java plugin `yamcs-packet-viewer`
+### Phase 3 — Java plugin `web-packet-viewer`
 
 Copy of the fops plugin skeleton (`FopsPlugin` extraction + `WebPlugin.addExtension`, plugin
 metadata, `META-INF/services/org.yamcs.Plugin`), plus:
@@ -292,7 +292,7 @@ archived packets, all named as Yamcs names them, no decoding error.
 Copied setup from fops (`main.ts` with `createApplication` + `provideYamcsWebExtension`,
 `postbuild.mjs`, single bundle). Elements:
 
-- `<yamcs-packet-viewer>` (startup): `addNavItem('telemetry', {path: 'ext/packet-viewer', label:
+- `<web-packet-viewer>` (startup): `addNavItem('telemetry', {path: 'ext/packet-viewer', label:
   'Packet Viewer', icon: 'view_list', condition: user => user.hasAnyObjectPrivilegeOfType('ReadPacket') || user.isSuperuser()})`,
   `disableReloadOnNavigation`.
 - `<packet-viewer>` page (`ya-instance-page`, `ya-instance-toolbar` with File/Edit/Navigate/View

@@ -4,20 +4,21 @@ const instance = process.env['PV_INSTANCE'] ?? 'simulator';
 const page_ = `/ext/packet-viewer?c=${instance}`;
 
 const rows = (page: Page) => page.locator('.pv-row');
-const count = (page: Page) => page.locator('.pv-filterbar > span');
+const count = (page: Page) => page.locator('.pv-count');
+const status = (page: Page) => page.locator('.pv-message');
 
 async function open(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(page_);
-  await expect(page.locator('pv-log')).toContainText('Loaded definition of', { timeout: 30_000 });
+  await expect(page.locator('.pv-mdb')).not.toContainText('…', { timeout: 30_000 });
   return errors;
 }
 
-/** menu bar → item */
-async function menu(page: Page, name: string, item: string | RegExp) {
-  await page.locator('.pv-menubutton', { hasText: name }).click();
-  await page.getByRole('menuitem', { name: item }).click();
+/** the source bar: Live, Archive or Local file */
+async function source(page: Page, label: string) {
+  await page.locator('pv-source-bar ya-select').first().click();
+  await page.getByRole('menuitem', { name: label }).or(page.getByRole('option', { name: label })).first().click();
 }
 
 test('Packet Viewer is in the Telemetry group of the sidebar', async ({ page }) => {
@@ -29,7 +30,7 @@ test('Packet Viewer is in the Telemetry group of the sidebar', async ({ page }) 
   await expect(item).toBeVisible();
   await item.click();
   await expect(page).toHaveURL(/\/ext\/packet-viewer/);
-  await expect(page.locator('pv-log')).toContainText('Loaded definition of', { timeout: 30_000 });
+  await expect(page.locator('.pv-mdb')).not.toContainText('…', { timeout: 30_000 });
 });
 
 test('a local file: packets, details, hex highlight, filter, navigation', async ({ page, request }) => {
@@ -38,10 +39,11 @@ test('a local file: packets, details, hex highlight, filter, navigation', async 
   const file = await (await request.get(`/api/archive/${instance}:exportPackets`)).body();
   test.skip(file.length === 0, 'no packets in the archive');
 
-  await menu(page, 'File', /Open/);
-  await page.locator('.pv-dialog input[type=file]').setInputFiles({ name: 'export.raw', mimeType: 'application/octet-stream', buffer: file });
-  await page.getByRole('button', { name: 'Open' }).click();
-  await expect(page.locator('pv-log')).toContainText(/Loaded \d+ packets from "export.raw"/);
+  await source(page, 'Local file');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Open file' }).click();
+  await (await chooser).setFiles({ name: 'export.raw', mimeType: 'application/octet-stream', buffer: file });
+  await expect(status(page)).toContainText(/Loaded \d+ packets from "export.raw"/);
   const total = Number((await count(page).textContent())!.match(/(\d+) packets/)![1]);
   expect(total).toBeGreaterThan(0);
   await expect(rows(page).first()).toBeVisible();
@@ -68,7 +70,7 @@ test('a local file: packets, details, hex highlight, filter, navigation', async 
   for (const len of await page.locator('.pv-row > div:nth-child(4)').allTextContents()) {
     expect(Number(len)).toBeGreaterThan(40);
   }
-  await page.getByRole('button', { name: 'Clear' }).click();
+  await page.getByRole('button', { name: 'Clear filter' }).click();
   await expect(count(page)).toHaveText(`${total} packets`);
 
   // navigation: Go to Packet, mark, next, back
@@ -97,21 +99,26 @@ test('a local file: packets, details, hex highlight, filter, navigation', async 
 
 test('live packets of the realtime stream', async ({ page }) => {
   const errors = await open(page);
-  await menu(page, 'File', /Connect to Yamcs/);
-  await page.getByRole('button', { name: 'Connect' }).click();
+  await source(page, 'Live');
+  await page.locator('pv-source-bar').getByRole('button', { name: 'Start' }).click();
   await expect(page.locator('.pv-source')).toContainText('(live)');
   await expect(rows(page).first()).toBeVisible({ timeout: 15_000 });
-  await page.getByText('Disconnect').click();
-  await expect(page.locator('.pv-source')).toContainText('(stopped)');
+  await page.locator('ya-instance-toolbar').getByRole('button', { name: 'Pause' }).click();
+  await expect(page.locator('.pv-source')).toContainText('(paused)');
+  const n = await count(page).textContent();
+  await page.locator('ya-instance-toolbar').getByRole('button', { name: 'Resume' }).click();
+  await expect(page.locator('.pv-source')).toContainText('(live)');
+  await expect(count(page)).not.toHaveText(n!, { timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 
 test('packets of the archive', async ({ page }) => {
   const errors = await open(page);
-  await menu(page, 'File', /Load from Archive/);
-  await page.getByRole('button', { name: 'Last day' }).click();
-  await page.getByRole('button', { name: 'Open' }).click();
-  await expect(page.locator('pv-log')).toContainText(/Loaded \d+ packets? from the archive/, { timeout: 30_000 });
+  await source(page, 'Archive');
+  await page.locator('pv-source-bar ya-select').nth(1).click();
+  await page.getByRole('menuitem', { name: 'Last 24 hours' }).or(page.getByRole('option', { name: 'Last 24 hours' })).first().click();
+  await page.locator('pv-source-bar').getByRole('button', { name: 'Load' }).click();
+  await expect(status(page)).toContainText(/Loaded \d+ packets? from the archive/, { timeout: 30_000 });
   await expect(rows(page).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
