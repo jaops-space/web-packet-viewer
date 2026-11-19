@@ -1,0 +1,176 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.jaops.yamcs</groupId>
+  <artifactId>yamcs-packet-viewer</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>Yamcs Packet Viewer</name>
+  <description>
+    The Packet Viewer page of Yamcs-web: the packets of a file or of a Yamcs stream decoded in the browser
+    (WebAssembly), like the Yamcs packet-viewer application, and the HTTP resources it needs.
+  </description>
+  <url>https://github.com/jaops-space/yamcs-packet-viewer</url>
+
+  <licenses>
+    <license>
+      <name>GNU Affero General Public License (AGPL)</name>
+      <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/jaops-space/yamcs-packet-viewer.git</connection>
+    <developerConnection>scm:git:git@github.com:jaops-space/yamcs-packet-viewer.git</developerConnection>
+    <url>https://github.com/jaops-space/yamcs-packet-viewer</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <organization>
+    <name>Jaops</name>
+    <url>https://jaops.com</url>
+  </organization>
+
+  <developers>
+    <developer>
+      <id>jaops</id>
+      <name>Jaops</name>
+      <email>yamcs@jaops.com</email>
+      <organization>Jaops</organization>
+      <organizationUrl>https://jaops.com</organizationUrl>
+    </developer>
+  </developers>
+
+  <properties>
+    <yamcsVersion>5.14.1</yamcsVersion>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.yamcs</groupId>
+      <artifactId>yamcs-core</artifactId>
+      <version>${yamcsVersion}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.yamcs</groupId>
+      <artifactId>yamcs-web</artifactId>
+      <version>${yamcsVersion}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.5</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <!-- plugin.properties gets the version -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+      <!-- The web UI (npm run build in ../web), if built; extracted at startup.
+           A missing directory is skipped. -->
+      <resource>
+        <directory>${project.basedir}/../web/dist</directory>
+        <targetPath>packet-viewer-web</targetPath>
+        <filtering>false</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+        <configuration>
+          <release>17</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Release to Maven Central -->
+    <profile>
+      <id>jaops-release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.6.3</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <release>17</release>
+              <author>false</author>
+              <links>
+                <link>https://docs.yamcs.org/javadoc/yamcs/latest/</link>
+              </links>
+              <doclint>none</doclint>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.2</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <!-- Jaops Release Signing <yamcs@jaops.com> -->
+              <keyname>C56E028076F3CCB9</keyname>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.11.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <!-- Token of the Jaops account on central.sonatype.com, in ~/.m2/settings.xml -->
+              <publishingServerId>central-jaops</publishingServerId>
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

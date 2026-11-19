@@ -1,0 +1,120 @@
+/* Packet Viewer styles. Global (Yamcs-web loads yamcs-packet-viewer.css), so every rule is under .pv or a pv-
+   class. Colours come from Yamcs-web's theme variables, so light and dark follow the host. */
+
+.pv, .pv-menu, .pv-dialog {
+  --pv-line: var(--y-border-color, #e3e3e6);
+  --pv-mute: var(--y-hint-foreground, #6b6b70);
+  --pv-bad: var(--y-error-color, #d93025);
+  --pv-sel: rgba(0, 128, 200, 0.22);
+  --pv-mark: rgba(255, 213, 0, 0.45);
+  --pv-zebra: rgba(var(--y-contrast-rgb, 0, 0, 0), 0.04);
+  --pv-mono: "RobotoMono", ui-monospace, monospace;
+  --pv-hover: var(--y-table-hover-background, rgba(0, 0, 0, 0.04));
+}
+
+.pv { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 12px; color: var(--y-foreground-color); }
+.pv-grow { flex: 1; }
+.pv-mute { color: var(--pv-mute); }
+.pv-bad { color: var(--pv-bad); }
+.pv-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pv .r { text-align: right; }
+
+/* toolbar */
+.pv-menubutton.mat-mdc-button { min-width: 0; padding: 0 10px; height: 30px; }
+.pv-source { margin-left: 12px; color: var(--pv-mute); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.pv-shortcut { margin-left: 24px; color: var(--pv-mute); font-size: 12px; float: right; }
+.mat-mdc-menu-item .pv-shortcut { float: none; margin-left: auto; padding-left: 24px; }
+.mat-mdc-menu-item .mdc-list-item__primary-text { display: flex; align-items: center; width: 100%; }
+.pv-check { font-size: 18px; margin-right: 8px; vertical-align: -4px; }
+
+/* filter bar */
+.pv-filterbar { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--pv-line); }
+.pv-filter { flex: 1; display: flex; align-items: center; border: 1px solid var(--pv-line); border-radius: 3px; background: var(--y-background-color); max-width: 900px; }
+.pv-filter input { flex: 1; font: inherit; font-family: var(--pv-mono); color: inherit; background: transparent; border: none; outline: none; padding: 4px 6px; }
+.pv-filter.pv-invalid { background: #fde7e7; }
+.pv-filter.pv-invalid input { color: #9f1d1d; }
+.pv-icon { background: none; border: none; color: inherit; cursor: pointer; padding: 0 2px; display: inline-flex; align-items: center; }
+.pv-icon:disabled { color: var(--y-disabled-color, #aaa); cursor: default; }
+.pv-icon .material-symbols { font-size: 20px; }
+
+/* progress */
+.pv-progress { display: flex; gap: 10px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--pv-line); }
+.pv-bar { width: 220px; height: 6px; background: var(--pv-line); border-radius: 3px; overflow: hidden; }
+.pv-bar > div { height: 100%; background: var(--y-accent, #0080c8); transition: width 0.2s; }
+.pv-bar > div.pv-indeterminate { animation: pv-pulse 1.2s ease-in-out infinite; }
+@keyframes pv-pulse { 50% { opacity: 0.35; } }
+
+/* layout */
+.pv-main { flex: 1; display: flex; min-height: 0; }
+.pv-right { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pv-split-v { width: 5px; cursor: col-resize; background: var(--pv-line); flex: none; }
+.pv-split-h { height: 5px; cursor: row-resize; background: var(--pv-line); flex: none; }
+.pv-split-v:hover, .pv-split-h:hover { background: var(--y-accent, #0080c8); }
+
+/* packets table */
+pv-packets.pv-packets { display: flex; flex-direction: column; min-width: 200px; flex: none; min-height: 0; }
+.pv-scroll { flex: 1; overflow: auto; position: relative; outline: none; font-family: var(--pv-mono); }
+.pv-grid { display: grid; min-width: max-content; width: 100%; }
+.pv-grid > div { padding: 0 6px; height: 22px; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--pv-line); }
+.pv-head { position: sticky; top: 0; z-index: 1; background: var(--y-table-header-background, #f4f4f6); color: var(--y-table-header-foreground); font-family: var(--y-font-family, inherit); font-weight: 500; box-shadow: inset 0 -1px var(--pv-line); }
+.pv-colhead { cursor: context-menu; }
+.pv-rows { position: relative; min-width: max-content; }
+.pv-row { cursor: default; }
+.pv-row:hover { background: var(--pv-hover); }
+.pv-row.marked { background: var(--pv-mark); }
+.pv-row.sel { background: var(--pv-sel); }
+.pv-row.sel.marked { background: linear-gradient(var(--pv-sel), var(--pv-sel)), var(--pv-mark); }
+.pv-empty { position: absolute; top: 40px; left: 0; right: 0; text-align: center; color: var(--pv-mute); font-family: var(--y-font-family, inherit); padding: 0 12px; }
+
+/* details */
+pv-details.pv-details { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.pv-tabs { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--pv-line); padding: 0 8px; flex: none; }
+.pv-tabs button { font: inherit; background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 12px; cursor: pointer; color: inherit; }
+.pv-tabs button.active { border-bottom-color: var(--y-accent, #0080c8); color: var(--y-accent, #0080c8); }
+.pv-tabs .pv-mute { max-width: 50%; }
+.pv-decode-error { padding: 4px 8px; color: var(--pv-bad); border-bottom: 1px solid var(--pv-line); font-family: var(--pv-mono); }
+.pv-pane { flex: 1; overflow: auto; min-height: 0; }
+.pv-params { border-collapse: collapse; min-width: 100%; font-size: 12px; }
+.pv-params th { position: sticky; top: 0; text-align: left; font-weight: 500; background: var(--y-table-header-background, #f4f4f6); color: var(--y-table-header-foreground); padding: 3px 6px; border-bottom: 1px solid var(--pv-line); white-space: nowrap; }
+.pv-params td { padding: 1px 6px; white-space: nowrap; font-family: var(--pv-mono); border-right: 1px solid var(--pv-line); user-select: none; }
+.pv-params tbody tr:nth-child(odd) { background: var(--pv-zebra); }
+.pv-params tbody tr.sel { background: var(--pv-sel); }
+.pv-params td.b { font-weight: 700; }
+.pv-params a { color: var(--y-accent, #0080c8); }
+.pv-tree { padding: 4px 0; font-family: var(--pv-mono); user-select: none; }
+.pv-node { display: flex; align-items: center; padding: 1px 6px; white-space: nowrap; cursor: default; }
+.pv-node:hover { background: var(--pv-hover); }
+.pv-node.sel { background: var(--pv-sel); }
+.pv-twisty { width: 18px; font-size: 16px; flex: none; cursor: pointer; color: var(--pv-mute); }
+.pv-indent { padding-left: 16px; }
+.pv-find { display: flex; gap: 6px; align-items: center; padding: 3px 8px; border-top: 1px solid var(--pv-line); flex: none; }
+.pv-find input { font: inherit; color: inherit; background: var(--y-background-color); border: 1px solid var(--pv-line); border-radius: 3px; padding: 2px 6px; width: 220px; }
+
+/* hex dump, log */
+pv-hexdump.pv-hex { flex: none; overflow: auto; min-height: 40px; }
+.pv-hex pre, .pv-log pre { margin: 0; padding: 4px 8px; font-family: var(--pv-mono); font-size: 12px; line-height: 1.4; }
+.pv-hex pre { min-height: 100%; box-sizing: border-box; }
+.pv-hex .o { color: var(--pv-mute); }
+.pv-hex .h { background: var(--y-accent, #0080c8); color: #fff; }
+pv-log.pv-log { flex: none; overflow: auto; min-height: 30px; }
+.pv-log pre { white-space: pre-wrap; color: var(--pv-mute); }
+
+/* context menu */
+.pv-menu { position: fixed; z-index: 1100; min-width: 200px; background: var(--y-background-color, #fff); color: var(--y-foreground-color); border: 1px solid var(--pv-line); border-radius: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); padding: 4px 0; font-size: 13px; }
+.pv-menu button { display: flex; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: none; padding: 5px 12px; cursor: pointer; }
+.pv-menu button .pv-shortcut { margin-left: auto; }
+.pv-menu button:hover:not(:disabled) { background: var(--pv-hover); }
+.pv-menu button:disabled { color: var(--y-disabled-color, #aaa); cursor: default; }
+.pv-menu hr { border: none; border-top: 1px solid var(--pv-line); margin: 4px 0; }
+
+/* dialogs */
+.pv-dialog { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.pv-dialog .pv-tabs { margin-bottom: 4px; padding: 0; }
+.pv-field { display: flex; flex-direction: column; gap: 3px; }
+.pv-field input, .pv-field select { font: inherit; color: inherit; background: var(--y-background-color); border: 1px solid var(--pv-line); border-radius: 3px; padding: 4px 6px; }
+.pv-field input.pv-invalid { border-color: var(--pv-bad); }
+.pv-row2 { display: flex; gap: 12px; }
+.pv-row2 .pv-field { flex: 1; }
+.pv-link { background: none; border: none; padding: 0; color: var(--y-accent, #0080c8); cursor: pointer; font: inherit; }
+.pv-lov { width: 100%; }
+.pv-dialog p { margin: 0; }

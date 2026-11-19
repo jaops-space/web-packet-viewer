@@ -1,0 +1,33 @@
+services:
+  - class: org.yamcs.http.HttpServer
+    args:
+      port: 8091
+
+# Relative to target/yamcs: mvn clean removes the archive.
+dataDir: yamcs-data
+
+instances:
+  - simulator
+
+secretKey: changeme
+
+yamcs-web:
+  tag: "packet viewer dev"
+
+packetViewer:
+  liveMaxLines: 1000
+  fileFormats:
+    - name: CCSDS Packets
+      packetInputStreamClassName: org.yamcs.tctm.CcsdsPacketInputStream
+    - name: PUS Packets (CUC time)
+      packetInputStreamClassName: org.yamcs.tctm.CcsdsPacketInputStream
+      packetPreprocessorClassName: org.yamcs.tctm.GenericPacketPreprocessor
+      packetPreprocessorArgs:
+        timestampOffset: 13
+        seqCountOffset: 2
+        timeEncoding:
+          type: CUC
+          epoch: UNIX
+  instances:
+    simulator:
+      stream: tm_realtime
