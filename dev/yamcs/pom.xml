@@ -6,7 +6,7 @@
 
   <groupId>com.jaops.yamcs</groupId>
   <artifactId>web-packet-viewer-dev-yamcs</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
   <packaging>jar</packaging>
   <name>web-packet-viewer development Yamcs</name>
 
@@ -36,7 +36,7 @@
     <dependency>
       <groupId>com.jaops.yamcs</groupId>
       <artifactId>web-packet-viewer</artifactId>
-      <version>0.1.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
